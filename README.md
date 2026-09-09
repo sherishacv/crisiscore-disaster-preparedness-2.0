@@ -474,49 +474,6 @@ http://127.0.0.1:8000/docs
 
 ---
 
-# 🔐 Google Earth Engine Setup
-
-The flood detection service uses Google Earth Engine.
-
-Authenticate your Earth Engine account from the backend environment:
-
-```bash
-earthengine authenticate
-```
-
-After authentication, restart the backend.
-
-You can check flood-service availability through:
-
-```text
-GET /api/flood-status
-```
-
-The general health endpoint also reports whether the flood service is ready.
-
-```text
-GET /health
-```
-
----
-
-# 🔑 API Configuration
-
-Some external services require API credentials.
-
-Before running the application, configure the required credentials according to the project's backend configuration.
-
-Typical external services include:
-
-- OpenWeather
-- Google Earth Engine
-
-Never commit private API keys, service-account credentials, or other secrets to GitHub.
-
-Use environment variables or the project's configuration mechanism for local credentials.
-
----
-
 # 🧭 Map Interaction
 
 The map starts with an India-wide view.
@@ -532,39 +489,6 @@ Users can:
 5. Inspect individual markers.
 6. Select geographic locations.
 7. Run map-based flood analysis where the flood service is available.
-
----
-
-# 📊 Dashboard Components
-
-The frontend dashboard is organized into several major components.
-
-### Risk Cards
-
-Displays important high-level information such as:
-
-- Weather
-- Overall risk
-- Alerts
-
-### Risk Analysis
-
-Provides additional information about disaster risk.
-
-### Alert Panel
-
-Displays important disaster alerts.
-
-### Resource Cards
-
-Displays emergency resource information such as:
-
-- Nearest hospital
-- Nearest shelter
-
-### Disaster Map
-
-Provides the primary geospatial visualization and layer controls.
 
 ---
 
@@ -661,39 +585,6 @@ The current model architecture includes separate models for different disaster t
                          ↓
                    Overall Risk
 ```
-
-The system loads trained model artifacts through the backend's AI risk engine.
-
----
-
-# 📡 Data Sources
-
-## Sentinel-1
-
-Used as the satellite data source for flood monitoring.
-
-The flood service is designed around satellite-based analysis of geographic regions.
-
-## Google Earth Engine
-
-Used to access and process satellite-based geospatial information for the flood module.
-
-## USGS
-
-Used for earthquake event information.
-
-## OpenWeather
-
-Used for location-specific weather and weather-derived disaster analysis.
-
-## OpenStreetMap
-
-Used for geographic resource information including hospitals and shelters.
-
-## Overpass API
-
-Used to query OpenStreetMap geographic objects within specified geographic areas.
-
 ---
 
 # 🗺️ Example User Flow
@@ -722,37 +613,6 @@ Map viewport changes
 Hospitals and shelters for visible area requested
         ↓
 Resource markers updated
-```
-
----
-
-
-
-
-The assistant can use the existing disaster intelligence context instead of relying only on general-purpose responses.
-
----
-
-# 📈 Scalability Considerations
-
-CrisisCore is designed with a modular backend architecture.
-
-Each disaster type is implemented as a separate service.
-
-This allows additional data sources and disaster types to be added without completely rewriting the application.
-
-The architecture can be extended to support:
-
-```text
-New Data Source
-      ↓
-New Service
-      ↓
-Risk Engine
-      ↓
-API Endpoint
-      ↓
-Frontend Layer
 ```
 ---
 
@@ -799,31 +659,6 @@ the platform brings them together:
                     ▼
              Unified Intelligence
 ```
-
----
-
-
-# 📚 Project Documentation
-
-Important areas of the project include:
-
-```text
-frontend/
-    React user interface
-    Leaflet map
-    Dashboard components
-    API integration
-
-backend/
-    FastAPI application
-    Disaster services
-    AI risk engine
-    Weather integration
-    Resource discovery
-    Flood monitoring
-```
-
-The FastAPI Swagger interface provides an interactive way to inspect and test backend endpoints during development.
 
 ---
 
