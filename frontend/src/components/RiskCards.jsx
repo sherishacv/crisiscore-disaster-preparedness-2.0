@@ -1,4 +1,5 @@
 function RiskCards({ weather, risk, alertsCount, loading }) {
+  console.log("RISK DATA:", risk);
   const weatherDisplay = weather?.status === 'ok'
     ? `${Math.round(weather.temperature)}°C`
     : 'Data unavailable';
@@ -7,10 +8,10 @@ function RiskCards({ weather, risk, alertsCount, loading }) {
     ? `Humidity ${weather.humidity}% · Rain ${weather.rainfall_1h_mm ?? 0} mm`
     : weather?.message || 'OpenWeather data unavailable';
 
-  const overallSeverity = risk?.overall?.severity ?? 'UNAVAILABLE';
+  const overallSeverity = risk?.overall?.level ?? 'UNAVAILABLE';
   const overallDisplay = overallSeverity === 'MODEL_NOT_AVAILABLE'
-    ? 'Model unavailable'
-    : overallSeverity;
+  ? 'Model unavailable'
+  : overallSeverity;
 
   const alertsDisplay = loading ? '...' : (alertsCount ?? 0);
 

@@ -49,6 +49,18 @@ export async function getShelters(lat, lon) {
   return fetchJson(`/api/shelters?lat=${lat}&lon=${lon}`);
 }
 
+export async function getHospitalsInMap(south, west, north, east) {
+  return fetchJson(
+    `/api/hospitals/map?south=${south}&west=${west}&north=${north}&east=${east}`
+  );
+}
+
+export async function getSheltersInMap(south, west, north, east) {
+  return fetchJson(
+    `/api/shelters/map?south=${south}&west=${west}&north=${north}&east=${east}`
+  );
+}
+
 export async function analyzeFloodRisk(lat, lon, bufferDeg = 0.15) {
   return fetchJson('/api/flood-risk', {
     method: 'POST',

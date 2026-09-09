@@ -15,7 +15,11 @@ import {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapLegend from './MapLegend';
-import { analyzeFloodRisk } from '../services/api';
+import {
+  analyzeFloodRisk,
+  getHospitalsInMap,
+  getSheltersInMap,
+} from '../services/api';
 
 const INDIA_CENTER = [20.5937, 78.9629];
 const INDIA_BOUNDS = L.latLngBounds([6.5, 68.1], [35.5, 97.4]);
@@ -100,6 +104,65 @@ function MapClickHandler({ onMapClick }) {
   return null;
 }
 
+function MapResourceLoader({ onResourcesLoaded }) {
+  const map = useMap();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadResources = async () => {
+      // Don't query Overpass while viewing the entire country.
+      // Wait until the user zooms into a useful region.
+      if (map.getZoom() < 7) {
+        onResourcesLoaded([], []);
+        return;
+      }
+
+      const bounds = map.getBounds();
+
+      const south = bounds.getSouth();
+      const west = bounds.getWest();
+      const north = bounds.getNorth();
+      const east = bounds.getEast();
+
+      try {
+        const [hospitalData, shelterData] = await Promise.all([
+          getHospitalsInMap(south, west, north, east),
+          getSheltersInMap(south, west, north, east),
+        ]);
+
+        if (!cancelled) {
+          onResourcesLoaded(
+            hospitalData.hospitals ?? [],
+            shelterData.shelters ?? []
+          );
+        }
+      } catch (err) {
+        console.error('Map resource loading failed:', err);
+
+        if (!cancelled) {
+          onResourcesLoaded([], []);
+        }
+      }
+    };
+
+    loadResources();
+
+    const handleMoveEnd = () => {
+      loadResources();
+    };
+
+    map.on('moveend', handleMoveEnd);
+
+    return () => {
+      cancelled = true;
+      map.off('moveend', handleMoveEnd);
+    };
+  }, [map, onResourcesLoaded]);
+
+  return null;
+}
+
 function geoJsonToLeafletPositions(geometry) {
   if (!geometry || geometry.type !== 'Polygon') return null;
   return geometry.coordinates[0].map(([lon, lat]) => [lat, lon]);
@@ -115,6 +178,7 @@ function DisasterMap({
   disasters,
   hospitals = [],
   shelters = [],
+  onMapResourcesLoaded,
   userLocation,
   onRefresh,
   loading,
@@ -226,7 +290,9 @@ function DisasterMap({
         <MapFocusTarget target={mapFocusTarget} zoom={mapFocusZoom} />
         <MapResizeHandler />
         <MapClickHandler onMapClick={handleFloodAnalysis} />
-
+        <MapResourceLoader
+          onResourcesLoaded={onMapResourcesLoaded}
+        />
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -253,13 +319,19 @@ function DisasterMap({
                       </Popup>
                     </Polygon>
                   ) : (
-                    <Marker key={key} position={[f.lat, f.lon]} icon={floodIcon}>
+                    f.lat != null && f.lon != null ? (
+                      <Marker
+                      key={key}
+                      position={[f.lat, f.lon]}
+                      icon={floodIcon}
+                      >
                       <Popup>
-                        <strong>🌊 {f.region}</strong><br />
-                        Status: Data unavailable<br />
-                        {f.message}
+                      <strong>🌊 {f.region}</strong><br />
+                      Status: Data unavailable<br />
+                      {f.message}
                       </Popup>
-                    </Marker>
+                      </Marker>
+                    ) : null
                   );
                 }
                 return (
@@ -382,7 +454,7 @@ function DisasterMap({
             </LayerGroup>
           </LayersControl.Overlay>
 
-          <LayersControl.Overlay checked name="🏥 Hospitals">
+          <LayersControl.Overlay name="🏥 Hospitals">
             <LayerGroup>
               {hospitals.map((h) => (
                 <Marker key={h.id} position={[h.lat, h.lon]} icon={hospitalIcon}>
@@ -396,7 +468,7 @@ function DisasterMap({
             </LayerGroup>
           </LayersControl.Overlay>
 
-          <LayersControl.Overlay checked name="🏠 Shelters">
+          <LayersControl.Overlay name="🏠 Shelters">
             <LayerGroup>
               {shelters.map((s) => (
                 <Marker key={s.id} position={[s.lat, s.lon]} icon={shelterIcon}>

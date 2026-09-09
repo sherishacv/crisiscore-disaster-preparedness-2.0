@@ -21,6 +21,15 @@ function App() {
   const [weather, setWeather] = useState(null);
   const [hospitals, setHospitals] = useState([]);
   const [shelters, setShelters] = useState([]);
+  const [mapHospitals, setMapHospitals] = useState([]);
+  const [mapShelters, setMapShelters] = useState([]);
+  const handleMapResourcesLoaded = useCallback(
+  (newHospitals, newShelters) => {
+    setMapHospitals(newHospitals);
+    setMapShelters(newShelters);
+  },
+  []
+);
   const [aiRisk, setAiRisk] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [locationLabel, setLocationLabel] = useState('India (default)');
@@ -134,13 +143,14 @@ function App() {
           </div>
           <DisasterMap
             disasters={disasters}
-            hospitals={hospitals}
-            shelters={shelters}
+            hospitals={mapHospitals}
+            shelters={mapShelters}
             userLocation={userLocation}
             onRefresh={handleRefresh}
             loading={loading}
             mapFocusTarget={mapFocusTarget}
             mapFocusZoom={13}
+            onMapResourcesLoaded={handleMapResourcesLoaded}
           />
         </div>
 

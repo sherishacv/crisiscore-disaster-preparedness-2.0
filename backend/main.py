@@ -269,6 +269,40 @@ def shelters(
 ):
     return get_shelters(lat, lon)
 
+@app.get("/api/hospitals/map")
+def hospitals_map(
+    south: float = Query(...),
+    west: float = Query(...),
+    north: float = Query(...),
+    east: float = Query(...),
+):
+    """Return hospitals inside the current map viewport."""
+    from services.resource_service import get_hospitals_in_bbox
+
+    return get_hospitals_in_bbox(
+        south=south,
+        west=west,
+        north=north,
+        east=east,
+    )
+
+
+@app.get("/api/shelters/map")
+def shelters_map(
+    south: float = Query(...),
+    west: float = Query(...),
+    north: float = Query(...),
+    east: float = Query(...),
+):
+    """Return shelters inside the current map viewport."""
+    from services.resource_service import get_shelters_in_bbox
+
+    return get_shelters_in_bbox(
+        south=south,
+        west=west,
+        north=north,
+        east=east,
+    )
 
 def resolve_lat_lon(lat: Optional[float], lon: Optional[float], city: Optional[str]):
     from config import INDIA_WEATHER_CITIES, INDIA_COASTAL_CITIES
