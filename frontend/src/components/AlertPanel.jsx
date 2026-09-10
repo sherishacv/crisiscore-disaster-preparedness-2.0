@@ -1,4 +1,4 @@
-function AlertPanel({ alerts, loading }) {
+function AlertPanel({ alerts, loading, onAlertFocus }) {
   if (loading) {
     return (
       <div className="card alerts-panel">
@@ -38,9 +38,25 @@ function AlertPanel({ alerts, loading }) {
             : alert.disaster_type === 'cyclone' ? '🌀'
             : alert.disaster_type === 'drought' ? '🌵'
             : '⚠';
-          
+
+          const hasLocation = alert.lat != null && alert.lon != null;
+
+          const handleClick = () => {
+            if (hasLocation && onAlertFocus) {
+              onAlertFocus(alert.lat, alert.lon);
+            }
+          };
+
           return (
-            <div key={alert.id} className={`alert-row ${alert.severity}`}>
+            <div
+              key={alert.id}
+              className={`alert-row ${alert.severity} ${hasLocation ? 'alert-row-clickable' : ''}`}
+              onClick={hasLocation ? handleClick : undefined}
+              role={hasLocation ? 'button' : undefined}
+              tabIndex={hasLocation ? 0 : undefined}
+              onKeyDown={hasLocation ? (e) => { if (e.key === 'Enter') handleClick(); } : undefined}
+              title={hasLocation ? 'Click to focus on map' : undefined}
+            >
               <span className="alert-dot" />
               <div className="alert-content">
                 <div className="alert-header">
@@ -48,9 +64,10 @@ function AlertPanel({ alerts, loading }) {
                   {alert.source && <span className="alert-source">{alert.source}</span>}
                 </div>
                 <p className="alert-detail">{alert.detail}</p>
-                {alert.lat != null && alert.lon != null && (
+                {hasLocation && (
                   <small className="alert-location">
                     📍 {alert.lat.toFixed(2)}, {alert.lon.toFixed(2)}
+                    {onAlertFocus && ' · Click to view on map'}
                   </small>
                 )}
               </div>
