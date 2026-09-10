@@ -202,7 +202,11 @@ function App() {
       </section>
 
       <section className="alerts-section">
-        <AlertPanel alerts={alerts} loading={loading} />
+        <AlertPanel
+          alerts={alerts}
+          loading={loading}
+          onAlertFocus={(lat, lon) => setMapFocusTarget([lat, lon])}
+        />
       </section>
 
       <section className="card assistant">
