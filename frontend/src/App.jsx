@@ -124,7 +124,7 @@ function App() {
 
       {error && (
         <div className="error-banner">
-          ⚠ {error} — Ensure backend is running at http://localhost:8000
+          ⚠ {error} — Ensure backend is running at http://localhost:8001
         </div>
       )}
 
@@ -143,8 +143,8 @@ function App() {
           </div>
           <DisasterMap
             disasters={disasters}
-            hospitals={mapHospitals}
-            shelters={mapShelters}
+            hospitals={mapHospitals.length > 0 ? mapHospitals : hospitals}
+            shelters={mapShelters.length > 0 ? mapShelters : shelters}
             userLocation={userLocation}
             onRefresh={handleRefresh}
             loading={loading}
@@ -159,33 +159,57 @@ function App() {
 
       <section className="resource-grid">
         <ResourceCard
-          resource={{
-            id: 'hospital',
-            title: '🏥 Nearest Hospital',
-            summary: nearestHospital
-              ? nearestHospital.name
-              : loading ? 'Searching...' : 'Data unavailable',
-            distance: nearestHospital ? `${nearestHospital.distance_km} km` : '--',
-            icon: '🏥',
-            lat: nearestHospital?.lat,
-            lon: nearestHospital?.lon,
-          }}
-          onFocusMap={(coords, zoom) => setMapFocusTarget(coords)}
-        />
+  loading={loading}
+  resource={
+    nearestHospital
+      ? {
+          id: nearestHospital.id ?? 'hospital',
+          title: 'Nearest Hospital',
+          name: nearestHospital.name,
+          distance: nearestHospital.distance_km,
+          icon: '🏥',
+          type: 'Hospital',
+          lat: nearestHospital.lat,
+          lon: nearestHospital.lon,
+          source: 'OpenStreetMap',
+        }
+      : {
+          id: 'hospital',
+          title: 'Nearest Hospital',
+          icon: '🏥',
+          type: 'Hospital',
+        }
+  }
+  onFocusMap={(coords) => {
+    setMapFocusTarget([...coords]);
+  }}
+/>
         <ResourceCard
-          resource={{
-            id: 'shelter',
-            title: '🏠 Nearest Shelter',
-            summary: nearestShelter
-              ? nearestShelter.name
-              : loading ? 'Searching...' : 'Data unavailable',
-            distance: nearestShelter ? `${nearestShelter.distance_km} km` : '--',
-            icon: '🏠',
-            lat: nearestShelter?.lat,
-            lon: nearestShelter?.lon,
-          }}
-          onFocusMap={(coords, zoom) => setMapFocusTarget(coords)}
-        />
+  loading={loading}
+  resource={
+    nearestShelter
+      ? {
+          id: nearestShelter.id ?? 'shelter',
+          title: 'Nearest Shelter',
+          name: nearestShelter.name,
+          distance: nearestShelter.distance_km,
+          icon: '🏠',
+          type: 'Emergency Shelter',
+          lat: nearestShelter.lat,
+          lon: nearestShelter.lon,
+          source: 'OpenStreetMap',
+        }
+      : {
+          id: 'shelter',
+          title: 'Nearest Shelter',
+          icon: '🏠',
+          type: 'Emergency Shelter',
+        }
+  }
+  onFocusMap={(coords) => {
+    setMapFocusTarget([...coords]);
+  }}
+/>
         <ResourceCard
           resource={{
             id: 'alert',
