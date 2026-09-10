@@ -9,6 +9,12 @@ const LEGEND_ITEMS = [
   { key: 'unavailable', label: 'Data Unavailable', color: '#78909c', icon: '⬜' },
 ];
 
+const EARTHQUAKE_SEVERITY = [
+  { key: 'eq-high', label: 'M5.0+', color: '#ff5252' },
+  { key: 'eq-mid', label: 'M3.0–4.9', color: '#ffb340' },
+  { key: 'eq-low', label: 'Below M3.0', color: '#35d07f' },
+];
+
 function MapLegend() {
   return (
     <div className="map-legend-panel">
@@ -18,6 +24,16 @@ function MapLegend() {
           <span key={item.key} className="legend-item">
             <i className="legend-dot" style={{ background: item.color }} />
             {item.icon} {item.label}
+          </span>
+        ))}
+      </div>
+
+      <strong className="legend-title legend-subtitle">Earthquake Severity</strong>
+      <div className="legend-grid">
+        {EARTHQUAKE_SEVERITY.map((item) => (
+          <span key={item.key} className="legend-item">
+            <i className="legend-dot" style={{ background: item.color }} />
+            {item.label}
           </span>
         ))}
       </div>
