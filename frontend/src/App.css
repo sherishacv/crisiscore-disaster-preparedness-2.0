@@ -288,6 +288,10 @@ input {
   margin-bottom: 8px;
 }
 
+.legend-subtitle {
+  margin-top: 10px;
+}
+
 .legend-grid {
   display: flex;
   flex-wrap: wrap;
@@ -361,6 +365,16 @@ input {
 .alert-row.high { border-left: 3px solid #ff5252; }
 .alert-row.medium { border-left: 3px solid #ffb340; }
 .alert-row.low { border-left: 3px solid #39d98a; }
+
+.alert-row-clickable {
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.alert-row-clickable:hover {
+  background: #151c27;
+  border-color: #547cff;
+}
 
 .alert-dot {
   width: 8px;
