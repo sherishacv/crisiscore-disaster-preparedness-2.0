@@ -24,6 +24,19 @@ import {
 const INDIA_CENTER = [20.5937, 78.9629];
 const INDIA_BOUNDS = L.latLngBounds([6.5, 68.1], [35.5, 97.4]);
 const DEFAULT_ZOOM = 5;
+function hasValidCoordinates(resource) {
+  const lat = Number(resource?.lat);
+  const lon = Number(resource?.lon);
+
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lon >= -180 &&
+    lon <= 180
+  );
+}
 
 const userIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -87,11 +100,29 @@ function IndiaFitBounds() {
 
 function MapFocusTarget({ target, zoom }) {
   const map = useMap();
+
   useEffect(() => {
-    if (target) {
-      map.setView(target, zoom || 13);
+    if (!target) return;
+
+    const [lat, lon] = target;
+
+    if (
+      !Number.isFinite(Number(lat)) ||
+      !Number.isFinite(Number(lon))
+    ) {
+      return;
     }
+
+    map.flyTo(
+      [Number(lat), Number(lon)],
+      zoom || 13,
+      {
+        animate: true,
+        duration: 1.2,
+      }
+    );
   }, [map, target, zoom]);
+
   return null;
 }
 
@@ -111,10 +142,8 @@ function MapResourceLoader({ onResourcesLoaded }) {
     let cancelled = false;
 
     const loadResources = async () => {
-      // Don't query Overpass while viewing the entire country.
-      // Wait until the user zooms into a useful region.
+      // Keep the existing nearby resources at country-level zoom.
       if (map.getZoom() < 7) {
-        onResourcesLoaded([], []);
         return;
       }
 
@@ -133,16 +162,12 @@ function MapResourceLoader({ onResourcesLoaded }) {
 
         if (!cancelled) {
           onResourcesLoaded(
-            hospitalData.hospitals ?? [],
-            shelterData.shelters ?? []
+            hospitalData?.hospitals ?? [],
+            shelterData?.shelters ?? []
           );
         }
-      } catch (err) {
-        console.error('Map resource loading failed:', err);
-
-        if (!cancelled) {
-          onResourcesLoaded([], []);
-        }
+      } catch {
+        // Keep the existing resource markers if map-area loading fails.
       }
     };
 
@@ -197,14 +222,12 @@ function DisasterMap({
   mapFocusZoom = 13,
 }) {
   const mapShellRef = useRef(null);
-  const leafletMapRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [floodClickData, setFloodClickData] = useState(null);
   const [floodClickBounds, setFloodClickBounds] = useState(null);
   const [floodAnalyzing, setFloodAnalyzing] = useState(false);
   const [floodError, setFloodError] = useState(null);
   const [locateError, setLocateError] = useState(null);
-
   const floods = disasters?.floods ?? [];
   const earthquakes = disasters?.earthquakes ?? [];
   const droughts = disasters?.droughts ?? [];
@@ -235,6 +258,36 @@ function DisasterMap({
       setFloodAnalyzing(false);
     }
   }, []);
+
+  const handleLocateMe = useCallback(() => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+    setLocateError(null);
+
+    map.locate({ setView: true, maxZoom: 14 });
+
+    map.once('locationerror', (e) => {
+      setLocateError(e.message || 'Could not determine your location');
+    });
+  }, []);
+
+  const handleFitToDisasters = useCallback(() => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+
+    const points = [
+      ...floods.filter((f) => isValidLatLng(f.lat, f.lon)).map((f) => [f.lat, f.lon]),
+      ...earthquakes.filter((eq) => isValidLatLng(eq.lat, eq.lon)).map((eq) => [eq.lat, eq.lon]),
+      ...droughts.filter((d) => isValidLatLng(d.lat, d.lon)).map((d) => [d.lat, d.lon]),
+      ...heatwaves.filter((h) => isValidLatLng(h.lat, h.lon)).map((h) => [h.lat, h.lon]),
+      ...cyclones.filter((c) => isValidLatLng(c.lat, c.lon)).map((c) => [c.lat, c.lon]),
+    ];
+
+    if (points.length > 0) {
+      map.fitBounds(points, { padding: [30, 30] });
+    }
+  }, [floods, earthquakes, droughts, heatwaves, cyclones]);
+
 
   const toggleFullscreen = useCallback(() => {
     const el = mapShellRef.current;
@@ -267,35 +320,6 @@ function DisasterMap({
     return () => document.removeEventListener('fullscreenchange', onFsChange);
   }, []);
 
-  const handleLocateMe = useCallback(() => {
-    const map = leafletMapRef.current;
-    if (!map) return;
-    setLocateError(null);
-
-    map.locate({ setView: true, maxZoom: 14 });
-
-    map.once('locationerror', (e) => {
-      setLocateError(e.message || 'Could not determine your location');
-    });
-  }, []);
-
-  const handleFitToDisasters = useCallback(() => {
-    const map = leafletMapRef.current;
-    if (!map) return;
-
-    const points = [
-      ...floods.filter((f) => isValidLatLng(f.lat, f.lon)).map((f) => [f.lat, f.lon]),
-      ...earthquakes.filter((eq) => isValidLatLng(eq.lat, eq.lon)).map((eq) => [eq.lat, eq.lon]),
-      ...droughts.filter((d) => isValidLatLng(d.lat, d.lon)).map((d) => [d.lat, d.lon]),
-      ...heatwaves.filter((h) => isValidLatLng(h.lat, h.lon)).map((h) => [h.lat, h.lon]),
-      ...cyclones.filter((c) => isValidLatLng(c.lat, c.lon)).map((c) => [c.lat, c.lon]),
-    ];
-
-    if (points.length > 0) {
-      map.fitBounds(points, { padding: [30, 30] });
-    }
-  }, [floods, earthquakes, droughts, heatwaves, cyclones]);
-
   function MapResizeHandler() {
     const map = useMap();
     useEffect(() => {
@@ -309,21 +333,47 @@ function DisasterMap({
   return (
     <div className={`map-shell ${isFullscreen ? 'map-fullscreen' : ''}`} ref={mapShellRef}>
       <div className="map-toolbar">
-        <button type="button" className="map-btn" onClick={toggleFullscreen} title="Toggle fullscreen">
+        <button
+          type="button"
+          className="map-btn"
+          onClick={toggleFullscreen}
+          title="Toggle fullscreen"
+        >
           {isFullscreen ? '⛶ Exit Fullscreen' : '⛶ Fullscreen'}
         </button>
+
         {onRefresh && (
-          <button type="button" className="map-btn" onClick={onRefresh} disabled={loading}>
+          <button
+            type="button"
+            className="map-btn"
+            onClick={onRefresh}
+            disabled={loading}
+          >
             {loading ? 'Refreshing...' : '↻ Refresh Data'}
           </button>
         )}
-        <button type="button" className="map-btn" onClick={handleLocateMe} title="Go to my location">
+
+        <button
+          type="button"
+          className="map-btn"
+          onClick={handleLocateMe}
+          title="Go to my location"
+        >
           📍 My Location
         </button>
-        <button type="button" className="map-btn" onClick={handleFitToDisasters} title="Fit map to active events">
+
+        <button
+          type="button"
+          className="map-btn"
+          onClick={handleFitToDisasters}
+          title="Fit map to active events"
+        >
           🎯 Fit to Events
         </button>
-        <span className="source-tag">Sources: Sentinel-1/GEE · USGS · OpenWeather · OSM</span>
+
+        <span className="source-tag">
+          Sources: Sentinel-1/GEE · USGS · OpenWeather · OSM
+        </span>
       </div>
 
       <MapContainer
@@ -333,7 +383,6 @@ function DisasterMap({
         className="map-container"
         maxBounds={INDIA_BOUNDS.pad(0.5)}
         minZoom={4}
-        ref={leafletMapRef}
       >
         <IndiaFitBounds />
         <MapFocusTarget target={mapFocusTarget} zoom={mapFocusZoom} />
@@ -450,7 +499,8 @@ function DisasterMap({
 
           <LayersControl.Overlay name="🌵 Drought">
             <LayerGroup>
-              {droughts.filter((d) => d.severity !== 'NONE' && d.severity !== 'UNAVAILABLE' && isValidLatLng(d.lat, d.lon)).map((d) => (
+              {droughts.filter((d) => d.severity !== 'NONE' && d.severity !== 'UNAVAILABLE' && isValidLatLng(d.lat, d.lon))
+              .map((d) => (
                 <Marker key={d.region} position={[d.lat, d.lon]} icon={droughtIcon}>
                   <Popup>
                     <strong>🌵 {d.region}</strong><br />
@@ -468,7 +518,7 @@ function DisasterMap({
 
           <LayersControl.Overlay name="🔥 Heatwave">
             <LayerGroup>
-              {heatwaves.filter((h) => h.severity !== 'NONE' && h.severity !== 'UNAVAILABLE' && isValidLatLng(h.lat, h.lon)).map((h) => (
+              {heatwaves.filter((h) => h.severity !== 'NONE' && h.severity !== 'UNAVAILABLE' &&isValidLatLng(h.lat, h.lon)).map((h) => (
                 <CircleMarker
                   key={h.location}
                   center={[h.lat, h.lon]}
@@ -489,7 +539,7 @@ function DisasterMap({
 
           <LayersControl.Overlay name="🌀 Cyclone">
             <LayerGroup>
-              {cyclones.filter((c) => c.severity !== 'NONE' && c.severity !== 'UNAVAILABLE' && isValidLatLng(c.lat, c.lon)).map((c) => (
+              {cyclones.filter((c) => c.severity !== 'NONE' && c.severity !== 'UNAVAILABLE' && isValidLatLng(c.lat, c.lon)) .map((c) => (
                 <Marker key={c.location} position={[c.lat, c.lon]} icon={cycloneIcon}>
                   <Popup>
                     <strong>🌀 {c.location}</strong><br />
@@ -505,29 +555,41 @@ function DisasterMap({
 
           <LayersControl.Overlay name="🏥 Hospitals">
             <LayerGroup>
-              {hospitals.filter((h) => isValidLatLng(h.lat, h.lon)).map((h) => (
-                <Marker key={h.id} position={[h.lat, h.lon]} icon={hospitalIcon}>
-                  <Popup>
-                    <strong>🏥 {h.name}</strong><br />
-                    Distance: {h.distance_km} km<br />
-                    <small>Source: OpenStreetMap</small>
-                  </Popup>
-                </Marker>
-              ))}
+              {hospitals
+  .filter(hasValidCoordinates)
+  .map((h) => (
+    <Marker
+      key={h.id}
+      position={[Number(h.lat), Number(h.lon)]}
+      icon={hospitalIcon}
+    >
+      <Popup>
+        <strong>🏥 {h.name || 'Hospital'}</strong><br />
+        Distance: {h.distance_km ?? 'N/A'} km<br />
+        <small>Source: OpenStreetMap</small>
+      </Popup>
+    </Marker>
+  ))}
             </LayerGroup>
           </LayersControl.Overlay>
 
           <LayersControl.Overlay name="🏠 Shelters">
             <LayerGroup>
-              {shelters.filter((s) => isValidLatLng(s.lat, s.lon)).map((s) => (
-                <Marker key={s.id} position={[s.lat, s.lon]} icon={shelterIcon}>
-                  <Popup>
-                    <strong>🏠 {s.name}</strong><br />
-                    Distance: {s.distance_km} km<br />
-                    <small>Source: OpenStreetMap</small>
-                  </Popup>
-                </Marker>
-              ))}
+              {shelters
+  .filter(hasValidCoordinates)
+  .map((s) => (
+    <Marker
+      key={s.id}
+      position={[Number(s.lat), Number(s.lon)]}
+      icon={shelterIcon}
+    >
+      <Popup>
+        <strong>🏠 {s.name || 'Emergency Shelter'}</strong><br />
+        Distance: {s.distance_km ?? 'N/A'} km<br />
+        <small>Source: OpenStreetMap</small>
+      </Popup>
+    </Marker>
+  ))}
             </LayerGroup>
           </LayersControl.Overlay>
         </LayersControl>
