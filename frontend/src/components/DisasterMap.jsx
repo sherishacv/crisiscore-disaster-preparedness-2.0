@@ -227,7 +227,7 @@ function DisasterMap({
   const [floodClickBounds, setFloodClickBounds] = useState(null);
   const [floodAnalyzing, setFloodAnalyzing] = useState(false);
   const [floodError, setFloodError] = useState(null);
-
+  const [locateError, setLocateError] = useState(null);
   const floods = disasters?.floods ?? [];
   const earthquakes = disasters?.earthquakes ?? [];
   const droughts = disasters?.droughts ?? [];
@@ -258,6 +258,36 @@ function DisasterMap({
       setFloodAnalyzing(false);
     }
   }, []);
+
+  const handleLocateMe = useCallback(() => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+    setLocateError(null);
+
+    map.locate({ setView: true, maxZoom: 14 });
+
+    map.once('locationerror', (e) => {
+      setLocateError(e.message || 'Could not determine your location');
+    });
+  }, []);
+
+  const handleFitToDisasters = useCallback(() => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+
+    const points = [
+      ...floods.filter((f) => isValidLatLng(f.lat, f.lon)).map((f) => [f.lat, f.lon]),
+      ...earthquakes.filter((eq) => isValidLatLng(eq.lat, eq.lon)).map((eq) => [eq.lat, eq.lon]),
+      ...droughts.filter((d) => isValidLatLng(d.lat, d.lon)).map((d) => [d.lat, d.lon]),
+      ...heatwaves.filter((h) => isValidLatLng(h.lat, h.lon)).map((h) => [h.lat, h.lon]),
+      ...cyclones.filter((c) => isValidLatLng(c.lat, c.lon)).map((c) => [c.lat, c.lon]),
+    ];
+
+    if (points.length > 0) {
+      map.fitBounds(points, { padding: [30, 30] });
+    }
+  }, [floods, earthquakes, droughts, heatwaves, cyclones]);
+
 
   const toggleFullscreen = useCallback(() => {
     const el = mapShellRef.current;
@@ -303,15 +333,47 @@ function DisasterMap({
   return (
     <div className={`map-shell ${isFullscreen ? 'map-fullscreen' : ''}`} ref={mapShellRef}>
       <div className="map-toolbar">
-        <button type="button" className="map-btn" onClick={toggleFullscreen} title="Toggle fullscreen">
+        <button
+          type="button"
+          className="map-btn"
+          onClick={toggleFullscreen}
+          title="Toggle fullscreen"
+        >
           {isFullscreen ? '⛶ Exit Fullscreen' : '⛶ Fullscreen'}
         </button>
+
         {onRefresh && (
-          <button type="button" className="map-btn" onClick={onRefresh} disabled={loading}>
+          <button
+            type="button"
+            className="map-btn"
+            onClick={onRefresh}
+            disabled={loading}
+          >
             {loading ? 'Refreshing...' : '↻ Refresh Data'}
           </button>
         )}
-        <span className="source-tag">Sources: Sentinel-1/GEE · USGS · OpenWeather · OSM</span>
+
+        <button
+          type="button"
+          className="map-btn"
+          onClick={handleLocateMe}
+          title="Go to my location"
+        >
+          📍 My Location
+        </button>
+
+        <button
+          type="button"
+          className="map-btn"
+          onClick={handleFitToDisasters}
+          title="Fit map to active events"
+        >
+          🎯 Fit to Events
+        </button>
+
+        <span className="source-tag">
+          Sources: Sentinel-1/GEE · USGS · OpenWeather · OSM
+        </span>
       </div>
 
       <MapContainer
@@ -596,6 +658,12 @@ function DisasterMap({
       {floodError && (
         <div className="map-toast map-toast-error">
           Flood data unavailable: {floodError}
+        </div>
+      )}
+
+      {locateError && (
+        <div className="map-toast map-toast-error">
+          Location error: {locateError}
         </div>
       )}
 
