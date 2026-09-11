@@ -199,6 +199,17 @@ function eqColor(mag) {
   return '#35d07f';
 }
 
+function isValidLatLng(lat, lon) {
+  return (
+    typeof lat === 'number' &&
+    typeof lon === 'number' &&
+    !Number.isNaN(lat) &&
+    !Number.isNaN(lon) &&
+    lat >= -90 && lat <= 90 &&
+    lon >= -180 && lon <= 180
+  );
+}
+
 function DisasterMap({
   disasters,
   hospitals = [],
@@ -398,7 +409,7 @@ function DisasterMap({
 
           <LayersControl.Overlay checked name="🌍 Earthquake">
             <LayerGroup>
-              {earthquakes.map((eq) => (
+              {earthquakes.filter((eq) => isValidLatLng(eq.lat, eq.lon)).map((eq) => (
                 <CircleMarker
                   key={eq.id}
                   center={[eq.lat, eq.lon]}
@@ -426,7 +437,8 @@ function DisasterMap({
 
           <LayersControl.Overlay name="🌵 Drought">
             <LayerGroup>
-              {droughts.filter((d) => d.severity !== 'NONE' && d.severity !== 'UNAVAILABLE').map((d) => (
+              {droughts.filter((d) => d.severity !== 'NONE' && d.severity !== 'UNAVAILABLE' && isValidLatLng(d.lat, d.lon))
+              .map((d) => (
                 <Marker key={d.region} position={[d.lat, d.lon]} icon={droughtIcon}>
                   <Popup>
                     <strong>🌵 {d.region}</strong><br />
@@ -444,7 +456,7 @@ function DisasterMap({
 
           <LayersControl.Overlay name="🔥 Heatwave">
             <LayerGroup>
-              {heatwaves.filter((h) => h.severity !== 'NONE' && h.severity !== 'UNAVAILABLE').map((h) => (
+              {heatwaves.filter((h) => h.severity !== 'NONE' && h.severity !== 'UNAVAILABLE' &&isValidLatLng(h.lat, h.lon)).map((h) => (
                 <CircleMarker
                   key={h.location}
                   center={[h.lat, h.lon]}
@@ -465,7 +477,7 @@ function DisasterMap({
 
           <LayersControl.Overlay name="🌀 Cyclone">
             <LayerGroup>
-              {cyclones.filter((c) => c.severity !== 'NONE' && c.severity !== 'UNAVAILABLE').map((c) => (
+              {cyclones.filter((c) => c.severity !== 'NONE' && c.severity !== 'UNAVAILABLE' && isValidLatLng(c.lat, c.lon)) .map((c) => (
                 <Marker key={c.location} position={[c.lat, c.lon]} icon={cycloneIcon}>
                   <Popup>
                     <strong>🌀 {c.location}</strong><br />
